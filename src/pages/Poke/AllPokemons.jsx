@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import PokemonCard from '../../components/PokemonCard';
 import { Link } from 'react-router-dom';
+import { useFavorites } from '../../context/FavoritesContext'; // importar contexto
 
 export default function AllPokemons() {
   const [pokemons, setPokemons] = useState([]);
   const [generation, setGeneration] = useState('1');
   const [loading, setLoading] = useState(false);
+
+  // Importa do contexto:
+  const { favorites, toggleFavorite } = useFavorites();
 
   const generationRanges = {
     '1': [1, 151],
@@ -32,7 +35,12 @@ export default function AllPokemons() {
 
       try {
         const responses = await Promise.all(requests);
-        const data = responses.map(res => res.data);
+        const data = responses.map(res => ({
+          name: res.data.name,
+          id: res.data.id,
+          sprites: res.data.sprites, // se quiser passar imagem para o toggleFavorite
+          // ... pode adicionar outros dados que seu toggleFavorite usa
+        }));
         setPokemons(data);
       } catch (error) {
         console.error("Erro ao buscar os pokémons:", error);
@@ -44,43 +52,57 @@ export default function AllPokemons() {
     fetchPokemons();
   }, [generation]);
 
+  // Função que verifica se o pokemon está favoritado
+  const isFavorited = (pokemon) => {
+    return favorites.some(fav => fav.id === pokemon.id);
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold text-purple-300">Pokémons por Geração</h1>
-          <Link to="/" className="text-purple-400 underline hover:text-purple-300">
-            ← Voltar para Home
-          </Link>
+      <div className="max-w-4xl mx-auto">
+        <div className="flex justify-center items-center mb-6 w-full">
+          <h1 className="text-3xl font-bold text-purple-300">Pokémons por Geração</h1>
         </div>
-
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
           <label className="text-lg font-semibold text-purple-300">Escolha a Geração:</label>
           <select
             value={generation}
             onChange={(e) => setGeneration(e.target.value)}
-            className="bg-gray-800 text-white px-4 py-2 rounded border-2 border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-400"
+            className="bg-gray-800 text-white px-4 py-2 rounded border border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-400"
           >
-            <option value="1">Geração 1 (Kanto)</option>
-            <option value="2">Geração 2 (Johto)</option>
-            <option value="3">Geração 3 (Hoenn)</option>
-            <option value="4">Geração 4 (Sinnoh)</option>
-            <option value="5">Geração 5 (Unova)</option>
-            <option value="6">Geração 6 (Kalos)</option>
-            <option value="7">Geração 7 (Alola)</option>
-            <option value="8">Geração 8 (Galar)</option>
-            <option value="9">Geração 9 (Paldea)</option>
+            {Object.keys(generationRanges).map((gen) => (
+              <option key={gen} value={gen}>
+                Geração {gen}
+              </option>
+            ))}
           </select>
         </div>
 
         {loading ? (
-          <p className="text-center text-purple-300">Carregando Pokémons...</p>
+          <p className="text-center text-purple-300">Carregando...</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {pokemons.map(pokemon => (
-              <PokemonCard key={pokemon.id} pokemon={pokemon} />
+          <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {pokemons.map((pokemon) => (
+        <li key={pokemon.id} className="bg-gray-800 rounded p-3 text-center flex flex-col items-center gap-2">
+          <Link
+            to={`/pokemon/${pokemon.name}`}
+            className="block text-purple-300 hover:text-purple-400 transition"
+          >
+            {pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}
+          </Link>
+
+          {/* Botão Favoritar centralizado */}
+          <button
+            onClick={() => toggleFavorite(pokemon)}
+            className="text-2xl focus:outline-none"
+            aria-label={isFavorited(pokemon) ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+          >
+            {isFavorited(pokemon) ? '❤️' : '🤍'}
+          </button>
+        </li>
+
             ))}
-          </div>
+          </ul>
         )}
       </div>
     </div>
